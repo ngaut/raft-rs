@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["Server","The `Server` is responsible for receiving events from peer `Server` instance or clients, as well as managing election and heartbeat timeouts. When an event is received, it is applied to the local `Consensus`. The `Consensus` may optionally return a set of events to be dispatched to either remote peers or clients."]]});
