@@ -1,6 +1,7 @@
 use std::fmt;
 use std::net::SocketAddr;
 use std::rc::Rc;
+use std::time;
 
 use mio::tcp::TcpStream;
 use mio::Timeout as TimeoutHandle;
@@ -73,6 +74,7 @@ impl Connection {
     /// Note: the caller must manually set the token field after inserting the
     /// connection into a slab.
     pub fn unknown(socket: TcpStream) -> Result<Connection> {
+	socket.set_nodelay(true);
         let addr = try!(socket.peer_addr());
         Ok(Connection {
             kind: ConnectionKind::Unknown,
@@ -161,6 +163,7 @@ impl Connection {
                 // messages can be sent without ever registering.
                 let unregistered = stream.outbound_queue_len() == 0;
                 try!(stream.write_message(message));
+	    	print!("server side send {:?}\n", time::SystemTime::now());
                 Ok(unregistered && stream.outbound_queue_len() > 0)
             },
             None => Ok(false),

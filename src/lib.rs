@@ -72,6 +72,9 @@
 //! you wish to only read data and not have it pass through the persisted log.
 //!
 
+
+#![feature(time2)]
+
 #![cfg_attr(test, feature(test))]
 extern crate bufstream;
 extern crate capnp;
@@ -84,6 +87,7 @@ extern crate uuid;
 #[macro_use] extern crate wrapped_enum;
 #[cfg(test)] extern crate env_logger;
 #[cfg(feature = "serde")] extern crate serde;
+
 
 /// Prepares the environment testing. Should be called as the first line of every test with the
 /// name of the test as the only argument.
@@ -313,3 +317,7 @@ impl fmt::Display for ClientId {
         fmt::Display::fmt(&self.0, f)
     }
 }
+
+
+
+

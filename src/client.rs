@@ -1,6 +1,7 @@
 //! The `Client` allows users of the `raft` library to connect to remote `Server` instances and
 //! issue commands to be applied to the `StateMachine`.
 
+
 use std::collections::HashSet;
 use std::fmt;
 use std::io::Write;
@@ -8,6 +9,7 @@ use std::time::Duration;
 use std::net::SocketAddr;
 use std::net::TcpStream;
 use std::str::FromStr;
+use std::time;
 
 use bufstream::BufStream;
 use capnp::serialize;
@@ -98,13 +100,17 @@ impl Client {
                     stream
                 }
             };
+	    let mut start = time::SystemTime::now();
             if let Err(_) = serialize::write_message(&mut connection, message) { continue };
             if let Err(_) = connection.flush() { continue };
+	    print!("send using {:?}\n", time::SystemTime::now().duration_from_earlier(start));
+	    start = time::SystemTime::now();
             scoped_debug!("awaiting response from connection");
             let response = match serialize::read_message(&mut connection, ReaderOptions::new()) {
                 Ok(res) => res,
                 Err(_) => continue,
             };
+	    print!("read using {:?}\n", time::SystemTime::now().duration_from_earlier(start));
             let reader = match response.get_root::<client_response::Reader>() {
                 Ok(reader) => reader,
                 Err(_) => continue,

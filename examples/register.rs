@@ -1,7 +1,10 @@
 // In order to use Serde we need to enable these nightly features.
+
+#![feature(time2)]
 #![feature(plugin)]
 #![feature(custom_derive)]
 #![plugin(serde_macros)]
+#[warn(unused_attributes)]
 
 extern crate bincode;
 extern crate docopt;
@@ -13,6 +16,7 @@ extern crate serde;
 use std::collections::HashMap;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::process;
+use std::time;
 
 use docopt::Docopt;
 
@@ -181,8 +185,11 @@ fn server(args: &Args) {
 /// Panics if the get fails.
 fn get(args: &Args) {
     let mut client = create_client(args);
-    let request = bincode::serde::serialize(&Query::Get, bincode::SizeLimit::Infinite).unwrap();
-    handle_response(client.query(&request).unwrap());
+	for i in 0..1000000 {
+		print!("{}, {:?}", i, time::SystemTime::now());
+    		let request = bincode::serde::serialize(&Query::Get, bincode::SizeLimit::Infinite).unwrap();
+    		handle_response(client.query(&request).unwrap());
+	}
 }
 
 /// Sets a value for a given key in the provided raft cluster.
@@ -246,6 +253,7 @@ impl state_machine::StateMachine for RegisterStateMachine {
     }
 
     fn query(&self, query: &[u8]) -> Vec<u8> {
+	print!("new query\n");
         if let Err(err) = bincode::serde::deserialize::<Query>(&query) {
             return format!("{}", err).into_bytes();
         }
