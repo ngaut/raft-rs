@@ -597,7 +597,7 @@ impl <L, M> Consensus<L, M> where L: Log, M: StateMachine {
         scoped_trace!("query from Client({})", from);
 
 	let start = time::SystemTime::now();
-	print!("got {:?}", start);
+	//print!("got {:?}", start);
         if self.is_candidate() || (self.is_follower() && self.follower_state.leader.is_none()) {
             actions.client_messages.push((from, messages::command_response_unknown_leader()));
         } else if self.is_follower() {
@@ -611,7 +611,7 @@ impl <L, M> Consensus<L, M> where L: Log, M: StateMachine {
             let message = messages::command_response_success(&result);
             actions.client_messages.push((from, message));
         }
-	print!("process query {:?}\n", time::SystemTime::now().duration_from_earlier(start));
+	//print!("process query {:?}\n", time::SystemTime::now().duration_from_earlier(start));
     }
 
     /// Triggers a heartbeat timeout for the peer.

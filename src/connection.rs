@@ -87,6 +87,7 @@ impl Connection {
     /// Creates a new peer connection.
     pub fn peer(id: ServerId, addr: SocketAddr) -> Result<Connection> {
         let stream = try!(TcpStream::connect(&addr));
+	stream.set_nodelay(true);
         Ok(Connection {
             kind: ConnectionKind::Peer(id),
             addr: addr,
@@ -163,7 +164,7 @@ impl Connection {
                 // messages can be sent without ever registering.
                 let unregistered = stream.outbound_queue_len() == 0;
                 try!(stream.write_message(message));
-	    	print!("server side send {:?}\n", time::SystemTime::now());
+	    	//print!("server side send {:?}\n", time::SystemTime::now());
                 Ok(unregistered && stream.outbound_queue_len() > 0)
             },
             None => Ok(false),

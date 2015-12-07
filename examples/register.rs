@@ -144,7 +144,8 @@ fn create_client(args: &Args) -> Client {
 /// error and exiting on failure.
 fn handle_response(response: Vec<u8>) {
     match bincode::serde::deserialize(&response).unwrap() {
-        Response::Ok(val) => println!("{}", val),
+        //Response::Ok(val) => println!("{}", val),
+        Response::Ok(val) => {}, //print!("."),
         Response::Err(err) => {
             println!("{}", err);
             process::exit(1);
@@ -186,7 +187,7 @@ fn server(args: &Args) {
 fn get(args: &Args) {
     let mut client = create_client(args);
 	for i in 0..1000000 {
-		print!("{}, {:?}", i, time::SystemTime::now());
+		//print!("{}, {:?}", i, time::SystemTime::now());
     		let request = bincode::serde::serialize(&Query::Get, bincode::SizeLimit::Infinite).unwrap();
     		handle_response(client.query(&request).unwrap());
 	}
@@ -195,9 +196,11 @@ fn get(args: &Args) {
 /// Sets a value for a given key in the provided raft cluster.
 fn put(args: &Args) {
     let mut client = create_client(args);
+for i in 0..1000000 {
     let proposal = Proposal::Put(args.arg_new_value.clone());
     let request = bincode::serde::serialize(&proposal, bincode::SizeLimit::Infinite).unwrap();
     handle_response(client.propose(&request).unwrap());
+}
 }
 
 /// Atomically sets the register value if the current value equals the expected
@@ -253,7 +256,7 @@ impl state_machine::StateMachine for RegisterStateMachine {
     }
 
     fn query(&self, query: &[u8]) -> Vec<u8> {
-	print!("new query\n");
+	//print!("new query\n");
         if let Err(err) = bincode::serde::deserialize::<Query>(&query) {
             return format!("{}", err).into_bytes();
         }
