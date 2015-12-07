@@ -53,6 +53,7 @@ rand = "0.3"
 scoped_log = "0.1"
 uuid = "0.1"
 wrapped_enum = "0.1"
+rocksdb = "0.2.1"
 
 [dev-dependencies]
 env_logger = "*"
