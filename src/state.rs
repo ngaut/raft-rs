@@ -29,7 +29,6 @@ pub struct LeaderState {
 }
 
 impl LeaderState {
-
     /// Returns a new `LeaderState` struct.
     ///
     /// # Arguments
@@ -89,7 +88,6 @@ pub struct CandidateState {
 }
 
 impl CandidateState {
-
     /// Creates a new `CandidateState`.
     pub fn new() -> CandidateState {
         CandidateState { granted_votes: HashSet::new() }
@@ -125,7 +123,6 @@ pub struct FollowerState {
 }
 
 impl FollowerState {
-
     /// Returns a new `FollowerState`.
     pub fn new() -> FollowerState {
         FollowerState { leader: None }

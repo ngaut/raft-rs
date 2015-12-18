@@ -16,8 +16,10 @@
 
 extern crate raft; // <--- Kind of a big deal for this!
 extern crate env_logger;
-#[macro_use] extern crate log;
-#[macro_use] extern crate scoped_log;
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate scoped_log;
 extern crate docopt;
 extern crate serde;
 extern crate serde_json;
@@ -33,13 +35,7 @@ use serde_json::Value;
 use docopt::Docopt;
 
 // Raft's major components. See comments in code on usage and things.
-use raft::{
-    Server,
-    Client,
-    state_machine,
-    persistent_log,
-    ServerId,
-};
+use raft::{Server, Client, state_machine, persistent_log, ServerId};
 // A payload datatype. We're just using a simple enum. You can use whatever.
 use Message::*;
 
@@ -47,36 +43,51 @@ use Message::*;
 static USAGE: &'static str = "
 A replicated store. 
 
-Each register server holds a replica of the map, and coordinates with its
-peers to update the maps values according to client commands. The register
-is available for reading and writing only if a majority of register servers are
+Each register server holds a replica of the \
+                              map, and coordinates with its
+peers to update the maps values \
+                              according to client commands. The register
+is available for reading \
+                              and writing only if a majority of register servers are
 available.
 
 
-Commands:
+\
+                              Commands:
 
   get     Returns the current value of the key.
 
-  put     Sets the current value of the key, and returns the previous
-          value.
+  put     \
+                              Sets the current value of the key, and returns the previous
+          \
+                              value.
 
-  cas     (compare and set) Conditionally sets the value of the key if the
-          current value matches an expected value, returning true if the
+  cas     (compare and set) Conditionally sets the value of \
+                              the key if the
+          current value matches an expected value, \
+                              returning true if the
           key was set.
 
-  server  Starts a key server. Servers must be provided a unique ID and
-          address (ip:port) at startup, along with the ID and address of all
-          peer servers.register
+  server  Starts a \
+                              key server. Servers must be provided a unique ID and
+          \
+                              address (ip:port) at startup, along with the ID and address of all
+          \
+                              peer servers.register
 
 Usage:
   store get <key> (<node-address>)...
-  store put <key> <new-value> (<node-address>)...
-  store cas <key> <expected-value> <new-value> (<node-address>)...
-  store server <id> [<node-id> <node-address>]...
+  \
+                              store put <key> <new-value> (<node-address>)...
+  store cas <key> \
+                              <expected-value> <new-value> (<node-address>)...
+  store server \
+                              <id> [<node-id> <node-address>]...
   store (-h | --help)
 
 Options:
-  -h --help   Show a help message.
+  \
+                              -h --help   Show a help message.
 ";
 
 #[derive(Debug, RustcDecodable)]
@@ -114,8 +125,8 @@ pub enum Message {
 fn main() {
     let _ = env_logger::init();
     let args: Args = Docopt::new(USAGE)
-                            .and_then(|d| d.decode())
-                            .unwrap_or_else(|e| e.exit());
+                         .and_then(|d| d.decode())
+                         .unwrap_or_else(|e| e.exit());
     if args.cmd_server {
         server(&args);
     } else if args.cmd_get {
@@ -151,10 +162,10 @@ fn server(args: &Args) {
 
     // ...  And a list of peers.
     let mut peers = args.arg_node_id
-                    .iter()
-                    .zip(args.arg_node_address.iter())
-                    .map(|(&id, addr)| (ServerId::from(id), parse_addr(&addr)))
-                    .collect::<HashMap<_,_>>();
+                        .iter()
+                        .zip(args.arg_node_address.iter())
+                        .map(|(&id, addr)| (ServerId::from(id), parse_addr(&addr)))
+                        .collect::<HashMap<_, _>>();
 
     // The Raft Server will return an error if it's ID is inside of it's peer set. Don't do that.
     // Instead, take it out and use it!
@@ -171,9 +182,10 @@ fn get(args: &Args) {
     // Clients necessarily need to now the valid set of nodes which they can talk to.
     // This is both so they can try to talk to all the nodes if some are failing, and so that it
     // can verify that it's not being lead astray somehow in redirections on leadership changes.
-    let cluster = args.arg_node_address.iter()
-        .map(|v| parse_addr(&v))
-        .collect();
+    let cluster = args.arg_node_address
+                      .iter()
+                      .map(|v| parse_addr(&v))
+                      .collect();
 
     // Clients and be stored and reused, or used once and discarded.
     // There is very small overhead in connecting a new client to a cluster as it must discover and
@@ -197,74 +209,78 @@ fn get(args: &Args) {
 /// Sets a value for a given key in the provided Raft cluster.
 fn put(args: &Args) {
     // Same as above.
-    let cluster = args.arg_node_address.iter()
-        .map(|v| parse_addr(&v))
-        .collect();
+    let cluster = args.arg_node_address
+                      .iter()
+                      .map(|v| parse_addr(&v))
+                      .collect();
 
     let mut client = Client::new(cluster);
 
 
+    let new_value = serde_json::to_value(&args.arg_new_value);
+    let payload = serde_json::to_string(&Message::Put("x".to_string(), new_value)).unwrap();
     for i in 0..1000000 {
-        let new_value = serde_json::to_value(&args.arg_new_value);
-        let payload = serde_json::to_string(&Message::Put(i.to_string(), new_value)).unwrap();
-    // A propose will go through the persistent log and mutably modify the state machine in some
-    // way. This is **much** slower than `.query()`.
+        // let payload = serde_json::to_string(&Message::Put(i.to_string(), new_value)).unwrap();
+        // A propose will go through the persistent log and mutably modify the state machine in some
+        // way. This is **much** slower than `.query()`.
         let response = client.propose(payload.as_bytes()).unwrap();
     }
 
     // A response will block until it's proposal is complete. This is intended and expected behavior
     // based on the papers specifications.
-    //println!("{}", String::from_utf8(response).unwrap())
+    // println!("{}", String::from_utf8(response).unwrap())
 }
 
 /// Compares and sets a value for a given key in the provided Raft cluster if the value is what is
 /// expected.
 fn cas(args: &Args) {
     // Same as above.
-    let cluster = args.arg_node_address.iter()
-        .map(|v| parse_addr(&v))
-        .collect();
+    let cluster = args.arg_node_address
+                      .iter()
+                      .map(|v| parse_addr(&v))
+                      .collect();
 
     let mut client = Client::new(cluster);
 
     let new_value = serde_json::to_value(&args.arg_new_value);
     let expected_value = serde_json::to_value(&args.arg_expected_value);
-    let payload = serde_json::to_string(&Message::Cas(args.arg_key.clone(), expected_value, new_value)).unwrap();
+    let payload = serde_json::to_string(&Message::Cas(args.arg_key.clone(),
+                                                      expected_value,
+                                                      new_value))
+                      .unwrap();
 
     let response = client.propose(payload.as_bytes()).unwrap();
 
-    //println!("{}", String::from_utf8(response).unwrap())
+    // println!("{}", String::from_utf8(response).unwrap())
 }
 
 /// A state machine that holds a store.
 pub struct RStore {
-	store: DB,
+    store: DB,
 }
 
 /// Implement anything you want... A `new()` is generally a great idea.
 impl RStore {
     pub fn new() -> RStore {
-        RStore {
-            store: DB::open_default("./mystore").unwrap(),
-        }
+        RStore { store: DB::open_default("./mystore").unwrap() }
     }
 }
 
 impl fmt::Debug for RStore {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            write!(f, "mystore")
-        }
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "mystore")
+    }
 }
 
 /// Implementing `state_machine::StateMachine` allows your application specific state machine to be
 /// used in Raft. Feel encouraged to base yours of one of ours in these examples.
 impl state_machine::StateMachine for RStore {
-
     /// `apply()` is called on when a client's `.propose()` is commited and reaches the state
     /// machine. At this point it is durable and is going to be applied on at least half the nodes
     /// within the next couple round trips.
     fn apply(&mut self, new_value: &[u8]) -> Vec<u8> {
-        //println!("put {:?}", new_value);
+
+        // println!("put {:?}", new_value);
         scoped_info!("Applying {:?}", String::from_utf8_lossy(new_value));
         // Deserialize
         let string = String::from_utf8_lossy(new_value);
@@ -274,45 +290,48 @@ impl state_machine::StateMachine for RStore {
         let response = match message {
             Get(key) => {
                 match self.store.get(&key.as_bytes()) {
-                    Ok(Some(value))=> serde_json::to_string(&value.to_utf8().unwrap()),
-                    Ok(None)=> {
-                        let v : Vec<u8> = Vec::new();
+                    Ok(Some(value)) => serde_json::to_string(&value.to_utf8().unwrap()),
+                    Ok(None) => {
+                        let v: Vec<u8> = Vec::new();
                         serde_json::to_string(&v)
                     }
-                    Err(e)=> {
-                        let v : Vec<u8> = Vec::new();
+                    Err(e) => {
+                        let v: Vec<u8> = Vec::new();
                         serde_json::to_string(&v)
                     }
                 }
-            },
+            }
             Put(key, value) => {
-                //println!("put {:?}, {:?}", key, value);
+                // println!("put {:?}, {:?}", key, value);
                 let old_value = match self.store.get(&key.as_bytes()) {
-                    Ok(Some(value))=> {
-                        //println!("{:?}", value.to_utf8());
+                    Ok(Some(value)) => {
+                        // println!("{:?}", value.to_utf8());
                         serde_json::to_string(&value.to_utf8().unwrap())
                     }
-                    Ok(None)=> {
-                        let v : Vec<u8> = Vec::new();
+                    Ok(None) => {
+                        let v: Vec<u8> = Vec::new();
                         serde_json::to_string(&v)
                     }
-                    Err(e)=> {
-                        let v : Vec<u8> = Vec::new();
+                    Err(e) => {
+                        let v: Vec<u8> = Vec::new();
                         serde_json::to_string(&v)
                     }
                 };
                 self.store.put(&key.as_bytes(), value.as_string().unwrap().as_bytes());
                 old_value
-            },
+            }
             Cas(key, old_check, new) => {
-                if self.store.get(&key.as_bytes()).unwrap().unwrap().to_utf8().unwrap() == old_check.as_string().unwrap() {
+                if self.store.get(&key.as_bytes()).unwrap().unwrap().to_utf8().unwrap() ==
+                   old_check.as_string().unwrap() {
                     let _ = self.store.put(&key.as_bytes(), &new.as_string().unwrap().as_bytes());
                     serde_json::to_string(&true)
                 } else {
                     serde_json::to_string(&false)
                 }
-            },
+            }
         };
+
+
 
         // Respond.
         response.unwrap().into_bytes()
@@ -322,7 +341,7 @@ impl state_machine::StateMachine for RStore {
     /// persistent log, it does not mutate the state of the state machine, and it is intended to be
     /// fast.
     fn query(&self, query: &[u8]) -> Vec<u8> {
-        //println!("query {:?}", query);
+        // println!("query {:?}", query);
         scoped_info!("Querying {:?}", String::from_utf8_lossy(query));
         // Deserialize
         let string = String::from_utf8_lossy(query);
@@ -332,18 +351,18 @@ impl state_machine::StateMachine for RStore {
         let response = match message {
             Get(key) => {
                 let old_value = match self.store.get(&key.as_bytes()) {
-                    Ok(Some(value))=> serde_json::to_string(&value.to_utf8().unwrap()),
-                    Ok(None)=> {
-                        let v : Vec<u8> = Vec::new();
+                    Ok(Some(value)) => serde_json::to_string(&value.to_utf8().unwrap()),
+                    Ok(None) => {
+                        let v: Vec<u8> = Vec::new();
                         serde_json::to_string(&v)
                     }
-                    Err(e)=> {
-                        let v : Vec<u8> = Vec::new();
+                    Err(e) => {
+                        let v: Vec<u8> = Vec::new();
                         serde_json::to_string(&v)
                     }
                 };
                 old_value
-            },
+            }
             _ => panic!("Can't do mutating requests in query"),
         };
 
@@ -353,20 +372,20 @@ impl state_machine::StateMachine for RStore {
 
     fn snapshot(&self) -> Vec<u8> {
         println!("snapshot");
-        /*
-        serde_json::to_string(&self.map)
-            .unwrap()
-            .into_bytes()
-            */
-        let mut v : Vec<u8> = Vec::new();
+        //
+        // serde_json::to_string(&self.map)
+        // .unwrap()
+        // .into_bytes()
+        //
+        let mut v: Vec<u8> = Vec::new();
         v
     }
 
     fn restore_snapshot(&mut self, snapshot_value: Vec<u8>) {
         println!("restore snapshot");
-        /*
-        self.map = serde_json::from_str(&String::from_utf8_lossy(&snapshot_value)).unwrap();
-        ()
-        */
+        //
+        // self.map = serde_json::from_str(&String::from_utf8_lossy(&snapshot_value)).unwrap();
+        // ()
+        //
     }
 }

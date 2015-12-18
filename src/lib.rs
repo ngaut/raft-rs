@@ -82,11 +82,16 @@ extern crate capnp_nonblock;
 extern crate mio;
 extern crate rand;
 extern crate uuid;
-#[macro_use] extern crate log;
-#[macro_use] extern crate scoped_log;
-#[macro_use] extern crate wrapped_enum;
-#[cfg(test)] extern crate env_logger;
-#[cfg(feature = "serde")] extern crate serde;
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate scoped_log;
+#[macro_use]
+extern crate wrapped_enum;
+#[cfg(test)]
+extern crate env_logger;
+#[cfg(feature = "serde")]
+extern crate serde;
 
 
 /// Prepares the environment testing. Should be called as the first line of every test with the
@@ -317,7 +322,3 @@ impl fmt::Display for ClientId {
         fmt::Display::fmt(&self.0, f)
     }
 }
-
-
-
-

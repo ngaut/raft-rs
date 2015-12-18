@@ -5,22 +5,9 @@ use std::time;
 
 use mio::tcp::TcpStream;
 use mio::Timeout as TimeoutHandle;
-use mio::{
-    EventLoop,
-    EventSet,
-    PollOpt,
-    Token,
-};
-use capnp::message::{
-    Builder,
-    HeapAllocator,
-    Reader,
-    ReaderOptions,
-};
-use capnp_nonblock::{
-    MessageStream,
-    Segments,
-};
+use mio::{EventLoop, EventSet, PollOpt, Token};
+use capnp::message::{Builder, HeapAllocator, Reader, ReaderOptions};
+use capnp_nonblock::{MessageStream, Segments};
 
 use ClientId;
 use Result;
@@ -66,7 +53,6 @@ pub struct Connection {
 }
 
 impl Connection {
-
     /// Creates a new `Connection` wrapping the provided socket stream.
     ///
     /// The socket must already be connected.
@@ -74,7 +60,7 @@ impl Connection {
     /// Note: the caller must manually set the token field after inserting the
     /// connection into a slab.
     pub fn unknown(socket: TcpStream) -> Result<Connection> {
-	socket.set_nodelay(true);
+        socket.set_nodelay(true);
         let addr = try!(socket.peer_addr());
         Ok(Connection {
             kind: ConnectionKind::Unknown,
@@ -87,7 +73,7 @@ impl Connection {
     /// Creates a new peer connection.
     pub fn peer(id: ServerId, addr: SocketAddr) -> Result<Connection> {
         let stream = try!(TcpStream::connect(&addr));
-	stream.set_nodelay(true);
+        stream.set_nodelay(true);
         Ok(Connection {
             kind: ConnectionKind::Peer(id),
             addr: addr,
@@ -123,7 +109,8 @@ impl Connection {
 
     /// Returns the connection's mutable stream.
     /// Must only be called while the connection is active.
-    fn stream_mut(&mut self) -> &mut MessageStream<TcpStream, HeapAllocator, Rc<Builder<HeapAllocator>>> {
+    fn stream_mut(&mut self)
+                  -> &mut MessageStream<TcpStream, HeapAllocator, Rc<Builder<HeapAllocator>>> {
         match self.stream {
             Some(ref mut stream) => stream,
             None => panic!(format!("{:?}: not connected", self)),
@@ -164,9 +151,9 @@ impl Connection {
                 // messages can be sent without ever registering.
                 let unregistered = stream.outbound_queue_len() == 0;
                 try!(stream.write_message(message));
-	    	//print!("server side send {:?}\n", time::SystemTime::now());
+                // print!("server side send {:?}\n", time::SystemTime::now());
                 Ok(unregistered && stream.outbound_queue_len() > 0)
-            },
+            }
             None => Ok(false),
         }
     }
@@ -180,8 +167,13 @@ impl Connection {
     }
 
     /// Registers the connection with the event loop.
-    pub fn register<L, M>(&mut self, event_loop: &mut EventLoop<Server<L, M>>, token: Token) -> Result<()>
-    where L: Log, M: StateMachine {
+    pub fn register<L, M>(&mut self,
+                          event_loop: &mut EventLoop<Server<L, M>>,
+                          token: Token)
+                          -> Result<()>
+        where L: Log,
+              M: StateMachine
+    {
         scoped_trace!("{:?}: register", self);
         event_loop.register_opt(self.stream().inner(), token, self.events(), poll_opt())
                   .map_err(|error| {
@@ -191,8 +183,13 @@ impl Connection {
     }
 
     /// Reregisters the connection with the event loop.
-    pub fn reregister<L, M>(&mut self, event_loop: &mut EventLoop<Server<L, M>>, token: Token) -> Result<()>
-    where L: Log, M: StateMachine {
+    pub fn reregister<L, M>(&mut self,
+                            event_loop: &mut EventLoop<Server<L, M>>,
+                            token: Token)
+                            -> Result<()>
+        where L: Log,
+              M: StateMachine
+    {
         scoped_trace!("{:?}: reregister", self);
         event_loop.reregister(self.stream().inner(), token, self.events(), poll_opt())
                   .map_err(|error| {
@@ -217,14 +214,18 @@ impl Connection {
                             event_loop: &mut EventLoop<Server<L, M>>,
                             token: Token)
                             -> Result<(ServerTimeout, TimeoutHandle)>
-    where L: Log, M: StateMachine {
+        where L: Log,
+              M: StateMachine
+    {
         scoped_assert!(self.kind.is_peer());
         self.stream = None;
         let duration = self.backoff.next_backoff_ms();
         let timeout = ServerTimeout::Reconnect(token);
         let handle = event_loop.timeout_ms(timeout, duration).unwrap();
 
-        scoped_info!("{:?}: reset, will attempt to reconnect in {}ms", self, duration);
+        scoped_info!("{:?}: reset, will attempt to reconnect in {}ms",
+                     self,
+                     duration);
         Ok((timeout, handle))
     }
 
@@ -238,15 +239,9 @@ impl Connection {
 impl fmt::Debug for Connection {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self.kind {
-            ConnectionKind::Peer(id) => {
-                write!(fmt, "PeerConnection({})", id)
-            },
-            ConnectionKind::Client(id) => {
-                write!(fmt, "ClientConnection({})", id)
-            },
-            ConnectionKind::Unknown => {
-                write!(fmt, "UnknownConnection({})", &self.addr)
-            },
+            ConnectionKind::Peer(id) => write!(fmt, "PeerConnection({})", id),
+            ConnectionKind::Client(id) => write!(fmt, "ClientConnection({})", id),
+            ConnectionKind::Unknown => write!(fmt, "UnknownConnection({})", &self.addr),
         }
     }
 }

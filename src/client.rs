@@ -13,12 +13,7 @@ use std::time;
 
 use bufstream::BufStream;
 use capnp::serialize;
-use capnp::message::{
-    Allocator,
-    Builder,
-    Reader,
-    ReaderOptions,
-};
+use capnp::message::{Allocator, Builder, Reader, ReaderOptions};
 
 use messages_capnp::{client_response, command_response};
 use messages;
@@ -41,7 +36,6 @@ pub struct Client {
 }
 
 impl Client {
-
     /// Creates a new client.
     pub fn new(cluster: HashSet<SocketAddr>) -> Client {
         Client {
@@ -68,7 +62,9 @@ impl Client {
         self.send_message(&mut message)
     }
 
-    fn send_message<A>(&mut self, message: &mut Builder<A>) -> Result<Vec<u8>> where A: Allocator {
+    fn send_message<A>(&mut self, message: &mut Builder<A>) -> Result<Vec<u8>>
+        where A: Allocator
+    {
         let mut members = self.cluster.iter().cloned();
 
         loop {
@@ -79,7 +75,7 @@ impl Client {
                 Some(cxn) => {
                     scoped_debug!("had existing connection {:?}", cxn.get_ref().peer_addr());
                     cxn
-                },
+                }
                 None => {
                     let leader = try!(members.next().ok_or(RaftError::LeaderSearchExhausted));
                     scoped_debug!("connecting to potential leader {}", leader);
@@ -89,28 +85,34 @@ impl Client {
                         Ok(stream) => {
                             let timeout = Some(Duration::from_millis(CLIENT_TIMEOUT));
                             if let Err(_) = stream.set_read_timeout(timeout) {
-                                continue
+                                continue;
                             }
                             BufStream::new(stream)
-                        },
+                        }
                         Err(_) => continue,
                     };
                     scoped_debug!("connected");
-                    if let Err(_) = serialize::write_message(&mut stream, &*preamble) { continue };
+                    if let Err(_) = serialize::write_message(&mut stream, &*preamble) {
+                        continue;
+                    };
                     stream
                 }
             };
-	    let mut start = time::SystemTime::now();
-            if let Err(_) = serialize::write_message(&mut connection, message) { continue };
-            if let Err(_) = connection.flush() { continue };
-	    //print!("send using {:?}\n", time::SystemTime::now().duration_from_earlier(start));
-	    start = time::SystemTime::now();
+            let mut start = time::SystemTime::now();
+            if let Err(_) = serialize::write_message(&mut connection, message) {
+                continue;
+            };
+            if let Err(_) = connection.flush() {
+                continue;
+            };
+            // print!("send using {:?}\n", time::SystemTime::now().duration_from_earlier(start));
+            start = time::SystemTime::now();
             scoped_debug!("awaiting response from connection");
             let response = match serialize::read_message(&mut connection, ReaderOptions::new()) {
                 Ok(res) => res,
                 Err(_) => continue,
             };
-	    //print!("read using {:?}\n", time::SystemTime::now().duration_from_earlier(start));
+            // print!("read using {:?}\n", time::SystemTime::now().duration_from_earlier(start));
             let reader = match response.get_root::<client_response::Reader>() {
                 Ok(reader) => reader,
                 Err(_) => continue,
@@ -121,31 +123,30 @@ impl Client {
                         Ok(command_response::Which::Success(data)) => {
                             scoped_debug!("received response Success");
                             self.leader_connection = Some(connection);
-                            return data
-                                .map(|v| Vec::from(v))
-                                .map_err(|e| e.into()) // Exit the function.
-                        },
+                            return data.map(|v| Vec::from(v))
+                                       .map_err(|e| e.into()); // Exit the function.
+                        }
                         Ok(command_response::Which::UnknownLeader(())) => {
                             scoped_debug!("received response UnknownLeader");
                             () // Keep looping.
-                        },
+                        }
                         Ok(command_response::Which::NotLeader(leader)) => {
                             scoped_debug!("received response NotLeader");
                             let leader_str = try!(leader);
                             if !self.cluster.contains(&try!(SocketAddr::from_str(leader_str))) {
                                 scoped_debug!("cluster violation detected");
-                                return Err(RaftError::ClusterViolation.into()) // Exit the function.
+                                return Err(RaftError::ClusterViolation.into()); // Exit the function.
                             }
                             let mut connection: TcpStream = try!(TcpStream::connect(leader_str));
                             let preamble = messages::client_connection_preamble(self.id);
                             if let Err(_) = serialize::write_message(&mut connection, &*preamble) {
-                                continue
+                                continue;
                             };
                             self.leader_connection = Some(BufStream::new(connection));
-                        },
+                        }
                         Err(_) => continue,
                     }
-                },
+                }
                 _ => panic!("Unexpected message type"), // TODO: return a proper error
             };
         }
@@ -214,7 +215,7 @@ mod tests {
         // The client connects on the proposal.
         // Wait for it.
         let child = thread::spawn(move || {
-            let (mut connection, _)  = test_server.accept().unwrap();
+            let (mut connection, _) = test_server.accept().unwrap();
 
             // Proposal should be fine, no errors.
             scoped_debug!("Should get preamble and proposal. Responds Success");
@@ -249,7 +250,7 @@ mod tests {
         // The client connects on the proposal.
         // Wait for it.
         let child = thread::spawn(move || {
-            let (mut connection, _)  = test_server.accept().unwrap();
+            let (mut connection, _) = test_server.accept().unwrap();
 
             // Proposal should report unknown leader, and have the client return error.
             scoped_debug!("Should get proposal. Responds UnknownLeader");
@@ -287,7 +288,7 @@ mod tests {
         let child = thread::spawn(move || {
             // Proposal should report NotLeader. Client should choose the server we direct it to.
             scoped_debug!("Should get preamble and proposal. Responds NotLeader.");
-            let (mut connection, _)  = test_server.accept().unwrap();
+            let (mut connection, _) = test_server.accept().unwrap();
             expect_preamble(&mut connection, client_id).unwrap();
             expect_proposal(&mut connection, to_propose).unwrap();
 
@@ -298,7 +299,7 @@ mod tests {
 
             // Test that it seeks out other server and proposes.
             scoped_debug!("Second server should get preamble and proposal. Responds Success.");
-            let (mut connection, _)  = second_server.accept().unwrap();
+            let (mut connection, _) = second_server.accept().unwrap();
             expect_preamble(&mut connection, client_id).unwrap();
             expect_proposal(&mut connection, to_propose).unwrap();
 
@@ -345,7 +346,7 @@ mod tests {
         let child = thread::spawn(move || {
             // Proposal should report NotLeader. Client should choose the server we direct it to.
             scoped_debug!("Should get preamble and proposal. Responds NotLeader.");
-            let (mut connection, _)  = test_server.accept().unwrap();
+            let (mut connection, _) = test_server.accept().unwrap();
             expect_preamble(&mut connection, client_id).unwrap();
             expect_proposal(&mut connection, to_propose).unwrap();
 
